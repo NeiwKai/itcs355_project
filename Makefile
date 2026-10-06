@@ -17,11 +17,11 @@ setup: ## Install dependencies and print environment status
 	pip install -r requirements.txt
 	@echo "environment ok"
 
-data-check: ## Check that the data exist, if not tell user to download it
+data: ## Check that the data exist, if not tell user to download it
 	@if [ ! -f $(DATA_PATH) ]; then \
-		echo "Error: Dataset not found at '$(DATA_PATH)'."; \
-		echo "Please download 'winequality-red.csv' from 'https://www.kaggle.com/datasets/uciml/red-wine-quality-cortez-et-al-2009/data' and place it in 'data/raw/' before continuing."; \
-		exit 1; \
+		echo "Downloading dataset from kagglehub..."; \
+		python -m scripts.get_dataset; \
+		echo "Download finish!"; \
 	fi
 	@echo "✓ Data verified: '$(DATA_PATH)' exists."
 
@@ -35,7 +35,7 @@ image: ## Build the training image for linux/amd64
 	@echo "Building docker image..."
 	docker buildx build --platform $(PLATFORM) -t $(IMAGE):$(TAG) --load .
 
-reproduce: data-check image 
+reproduce: data image 
 	@echo "Running reproduction pipeline..."
 	docker run --rm \
 	  -v "$$PWD/data:/app/data:ro" \
