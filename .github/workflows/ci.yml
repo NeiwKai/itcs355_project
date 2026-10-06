@@ -79,10 +79,10 @@ jobs:
           pip install --require-hashes -r requirements.txt
 
       - name: Build training image
-        run: docker buildx build --platform linux/amd64 -t itcs355:${{ github.sha }} --load .
+        run: docker buildx build --platform linux/amd64 -t itcs355-proj:${{ github.sha }} --load .
 
       - name: Build serving image
-        run: docker buildx build --platform linux/amd64 -f service/Dockerfile.serve -t itcs355-serve:${{ github.sha }} --load .
+        run: docker buildx build --platform linux/amd64 -f service/Dockerfile.serve -t itcs355-proj-serve:${{ github.sha }} --load .
 
       - name: Integration test
         run: |
@@ -93,7 +93,7 @@ jobs:
             -v "$PWD/reports:/app/reports:ro" \
             -e MODEL_PATH=/app/reports/model.joblib \
             -e MODEL_VERSION=${{ github.sha }} \
-            itcs355-serve:${{ github.sha }}
+            itcs355-proj-serve:${{ github.sha }}
           for i in $(seq 1 30); do
             curl -sf localhost:8080/ready && break || sleep 2
           done
