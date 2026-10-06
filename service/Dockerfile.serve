@@ -3,7 +3,7 @@ FROM python@sha256:a2bc8c35469b6fe37735f7c4dae39049470b2ce068e73f799c02452de31d2
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 COPY requirements-serve.txt ./
-RUN pip install --prefix=/install -r requirements-serve.txt
+RUN pip install --prefix=/install --require-hashes -r requirements-serve.txt
 
 FROM python@sha256:a2bc8c35469b6fe37735f7c4dae39049470b2ce068e73f799c02452de31d24c6 AS runtime
 
