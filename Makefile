@@ -4,6 +4,7 @@ TAG := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 PLATFORM ?= linux/amd64
 SEED := 20260518
 DATA_PATH := data/raw/winequality-red.csv
+MODEL_PATH := reports/model.joblib
 
 .PHONY: help setup test
  
@@ -42,6 +43,29 @@ reproduce: data-check image
 	  -e MLFLOW_TRACKING_URI=sqlite:////app/reports/mlflow.db \
 	  $(IMAGE):$(TAG) --seed $(SEED) --metrics-out /app/reports/metrics.json
 
-serve: ## Run the inference service locally on :8080
-	python scripts/export_model.py --C 1.0 --epsilon 0.1 --out reports/model.joblib
+export_model:
+	@if [ ! -f reports/model.joblib ]; then \
+		echo "Exporting model joblib..."; \
+		python scripts/export_model.py --C 1.0 --epsilon 0.1 --out $(MODEL_PATH); \
+	else \
+		echo "✓ Model verified: '$(MODEL_PATH)' exists."; \
+	fi
+
+serve: export_model ## Run the inference service locally on :8080
 	MODEL_PATH=reports/model.joblib MODEL_VERSION=local uvicorn service.app:app --port 8080
+
+serve-image: export_model ## Build the serving image
+	docker buildx build --platform $(PLATFORM) -f service/Dockerfile.serve -t $(IMAGE)-serve:$(TAG) --load .
+
+serve-image-local: serve-image ## Host the serving image locally (test)
+	@echo "Hosting service from serving image..."
+	docker run --rm \
+	  -p 8080:8080 \
+	  -v "$$PWD/data:/app/data:ro" \
+	  -v "$$PWD/reports:/app/reports" \
+	  -e MLFLOW_TRACKING_URI=sqlite:///app/reports/mlflow.db \
+	  $(IMAGE)-serve:$(TAG)
+
+
+
+

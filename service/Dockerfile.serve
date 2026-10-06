@@ -1,0 +1,19 @@
+FROM python@sha256:a2bc8c35469b6fe37735f7c4dae39049470b2ce068e73f799c02452de31d24c6 AS builder
+
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /build
+COPY requirements-serve.txt ./
+RUN pip install --prefix=/install -r requirements-serve.txt
+
+FROM python@sha256:a2bc8c35469b6fe37735f7c4dae39049470b2ce068e73f799c02452de31d24c6 AS runtime
+
+RUN useradd --create-home --uid 10001 runner
+ENV PYTHONUNBUFFERED=1 PYTHONPATH=/app
+COPY --from=builder /install /usr/local
+WORKDIR /app
+COPY --chown=runner:runner service/ ./service/
+COPY --chown=runner:runner src/ ./src/
+USER runner
+
+EXPOSE 8080
+CMD ["uvicorn", "service.app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
