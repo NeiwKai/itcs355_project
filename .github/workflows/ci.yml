@@ -97,9 +97,21 @@ jobs:
           for i in $(seq 1 30); do
             curl -sf localhost:8080/ready && break || sleep 2
           done
-          curl -sf -X POST localhost:8080/predict \
-            -H 'content-type: application/json' \
-            -d '{"temp_c":78.4,"vibration_mm_s":3.1,"pressure_kpa":315.2,"hours_since_service":4200,"load_pct":68,"ambient_humidity":55}' \
+          curl -X POST "http://localhost:8080/predict" \
+          -H "Content-Type: application/json" \
+          -d '{ \
+            "fixed acidity": 7.4, \
+            "volatile acidity": 0.70, \
+            "citric acid": 0.00, \
+            "residual sugar": 1.9, \
+            "chlorides": 0.076, \
+            "free sulfur dioxide": 11.0, \
+            "total sulfur dioxide": 34.0, \
+            "density": 0.9978, \
+            "pH": 3.51, \
+            "sulphates": 0.56, \
+            "alcohol": 25.0 \
+          }' \
             | tee /dev/stderr | grep -q probability
           docker stop svc
 
