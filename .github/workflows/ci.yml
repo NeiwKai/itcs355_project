@@ -65,7 +65,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      # The integration test below runs make_dataset/train/export on the runner to
+      # The integration test below runs get_dataset/train/export on the runner to
       # produce the artefact the serving container is then asked to serve, so this job
       # needs the same interpreter and pins as the test job.
       - uses: actions/setup-python@v7
@@ -86,7 +86,7 @@ jobs:
 
       - name: Integration test
         run: |
-          python scripts/make_dataset.py
+          python scripts/get_dataset.py
           python -m src.train --metrics-out reports/metrics.json
           python scripts/export_model.py --out reports/model.joblib
           docker run -d --rm --name svc -p 8080:8080 \
