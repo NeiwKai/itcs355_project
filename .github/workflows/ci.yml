@@ -88,7 +88,7 @@ jobs:
         run: |
           python scripts/get_dataset.py
           python -m src.train --metrics-out reports/metrics.json
-          python scripts/export_model.py --out reports/model.joblib
+          python scripts/export_model.py --C 1.0 --epsilon 0.1 --out reports/model.joblib
           docker run -d --rm --name svc -p 8080:8080 \
             -v "$PWD/reports:/app/reports:ro" \
             -e MODEL_PATH=/app/reports/model.joblib \
