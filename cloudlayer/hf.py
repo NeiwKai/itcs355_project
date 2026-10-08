@@ -75,10 +75,8 @@ class HuggingFaceAdapter(CloudAdapter):
             token=token  # Required for private repositories
         )
 
-        # Move/Copy downloaded cached file to target local_path
-        import shutil
-        shutil.copy(downloaded_file, out_path)
-        print(f"✓ Downloaded '{repo_id}/{filename}' to '{out_path}'")
+        print(f"✓ Downloaded '{repo_id}' to HF cache: '{cached_model_path}'")
+        return cached_model_path
 
 
     def push_image(self, local_tag: str) -> str:
