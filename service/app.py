@@ -10,8 +10,9 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, Security
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from pathlib import Path
 import joblib
@@ -124,8 +125,6 @@ def _score(rows: list[dict]) -> tuple[list[int], list[float]]:
 
     return discrete_scores, raw_scores
 
-
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer()
 API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "default-local-key")
