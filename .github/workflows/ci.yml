@@ -84,7 +84,7 @@ jobs:
       - name: Build serving image
         run: docker buildx build --platform linux/amd64 -f service/Dockerfile.serve -t itcs355-proj-serve:${{ github.sha }} --load .
 
-    - name: Integration test
+      - name: Integration test
         run: |
           python scripts/get_dataset.py
           python -m src.train --metrics-out reports/metrics.json
