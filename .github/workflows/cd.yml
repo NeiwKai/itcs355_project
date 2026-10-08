@@ -96,6 +96,7 @@ jobs:
       - name: Smoke test
         env:
           RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
+          API_SECRET_KEY: ${{ secrets.API_SECRET_KEY }}
         run: |
           python -c "
           from src import config
