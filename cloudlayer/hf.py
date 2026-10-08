@@ -66,12 +66,14 @@ class HuggingFaceAdapter(CloudAdapter):
             repo_id = self._get_repo_id(parts[0])
             filename = "model.joblib"
 
+        token = self.cfg.token or os.environ.get("TOKEN")
+
         # Download from Hugging Face Hub using the adapter's token
         downloaded_file = hf_hub_download(
             repo_id=repo_id,
             filename=filename,
             repo_type=repo_type,
-            token=self.token  # Required for private repositories
+            token=token  # Required for private repositories
         )
 
         # Move/Copy downloaded cached file to target local_path
