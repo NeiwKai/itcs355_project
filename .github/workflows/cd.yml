@@ -38,8 +38,8 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python scripts/get_dataset.py
-          python -m src.train --metrics-out --C 1.0 --epsilon 0.1 reports/metrics.json
-          python scripts/export_model.py --out reports/model.joblib
+          python -m src.train --metrics-out reports/metrics.json
+          python scripts/export_model.py --C 1.0 --epsilon 0.1 --out reports/model.joblib
           python -c "
           from src import config
           from cloudlayer.factory import get_adapter
