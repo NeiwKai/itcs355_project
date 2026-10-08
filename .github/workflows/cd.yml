@@ -80,7 +80,7 @@ jobs:
       # --- DEPLOY TO RENDER VIA ADAPTER --------------------------------------
       - name: Deploy to staging
         env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK }}
           RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
           python -c "
