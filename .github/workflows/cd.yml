@@ -101,7 +101,7 @@ jobs:
           from cloudlayer.factory import get_adapter
           cfg = config.load(strict=False)
           adapter = get_adapter(cfg)
-          ep = adapter.deploy(cfg.model_registry_name, 'itcs355-project')
+          ep = adapter.deploy(cfg.model_registry_name, 'itcs355-project-service')
           print('Deployed to Endpoint:', ep)
           "
 
