@@ -41,7 +41,7 @@ def _load_model():
         from src import config
         from cloudlayer.factory import get_adapter
 
-        cfg = config.load()
+        cfg = config.load(strict=False)
         adapter = get_adapter(cfg)
         local_path = adapter.download(registry_name, "/reports/model.joblib")
     except Exception as err:
