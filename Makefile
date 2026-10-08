@@ -102,6 +102,10 @@ deploy: ## Deploy model inference service to Render
 	url = adapter.deploy(model_ref=cfg.model_registry_name, endpoint='itcs355-proj-service'); \
 	print(f'✓ Deployed live at: {url}')"
 
+smoke: ## Smoke test deployed endpoint with a sample payload
+	@ENDPOINT="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com)"; \
+	python -c "from src import config; from cloudlayer.factory import get_adapter; cfg = config.load(strict=False); adapter = get_adapter(cfg); payload = {'fixed acidity': 7.4, 'volatile acidity': 0.70, 'citric acid': 0.00, 'residual sugar': 1.9, 'chlorides': 0.076, 'free sulfur dioxide': 11.0, 'total sulfur dioxide': 34.0, 'density': 0.9978, 'pH': 3.51, 'sulphates': 0.56, 'alcohol': 9.4}; preds = adapter.invoke('$${ENDPOINT}', payload); print('✓ Smoke Test Response:', preds)"
+
 
 
 

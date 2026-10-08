@@ -142,6 +142,51 @@ class HuggingFaceAdapter(CloudAdapter):
 
         return os.environ.get("RENDER_SERVICE_URL", "https://itcs355-project.onrender.com")
 
+
+    def invoke(self, endpoint_name: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Sends an HTTP POST inference request to the live web service endpoint.
+
+        Args:
+            endpoint_name: Target service URL or endpoint identifier
+                           (e.g., 'https://itcs355-project.onrender.com' or 'itcs355-project').
+            payload: JSON request dictionary (e.g., single sample or batch rows).
+
+        Returns:
+            JSON response dictionary containing predictions.
+        """
+        import requests
+
+        # 1. Resolve full endpoint URL
+        if endpoint_name.startswith("http://") or endpoint_name.startswith("https://"):
+            base_url = endpoint_name.rstrip("/")
+        else:
+            # Fallback to RENDER_SERVICE_URL environment variable or construct URL
+            base_url = os.environ.get(
+                "RENDER_SERVICE_URL",
+                f"https://{endpoint_name}.onrender.com"
+            ).rstrip("/")
+
+        # Determine target path based on payload structure (batch vs single)
+        path = "/predict/batch" if "rows" in payload else "/predict"
+        target_url = f"{base_url}{path}"
+
+        headers = {"Content-Type": "application/json"}
+        if getattr(self, "token", None):
+            headers["Authorization"] = f"Bearer {self.token}"
+
+        # 2. Send HTTP POST inference request
+        response = requests.post(target_url, json=payload, headers=headers, timeout=30)
+
+        # 3. Handle errors and non-200 HTTP response codes
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Inference request failed ({response.status_code}): {response.text}"
+            )
+
+        return response.json()
+
+
+
     def emit_metric(self, metric_name: str, value: float) -> None:
         """Emits tracking metrics to Hugging Face Space runtime logs/telemetry."""
         print(f"[HF Telemetry] {metric_name}: {value}")
