@@ -1,0 +1,113 @@
+# ITCS355 Lab 4 — continuous deployment.
+
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-staging:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # --- EXPORT / REGISTER MODEL ARTIFACT ----------------------------------
+      - name: Prepare model artifact for deployment
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/get_dataset.py
+          python -m src.train --metrics-out reports/metrics.json
+          python scripts/export_model.py --out reports/model.joblib
+          python -c "
+          from src import config
+          from cloudlayer.factory import get_adapter
+          cfg = config.load(strict=False)
+          adapter = get_adapter(cfg)
+          model_uri = adapter.register_model('reports/model.joblib', cfg.model_registry_name)
+          print('Registered Model URI:', model_uri)
+          "
+
+      # --- BUILD LOCAL DOCKER IMAGE ---
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build serving image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -f service/Dockerfile.serve \
+            -t itcs355-proj-serve:${{ github.event.workflow_run.head_sha }} \
+            --load .
+
+      # --- PUSH CONTEXT / IMAGE TO HUGGINGFACE -------------------------------
+      - name: Push image context
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from src import config
+          from cloudlayer.factory import get_adapter
+          cfg = config.load(strict=False)
+          adapter = get_adapter(cfg)
+          remote_tag = adapter.push_image('itcs355-proj-serve:${{ github.event.workflow_run.head_sha }}')
+          print('Pushed remote image context:', remote_tag)
+          with open('/tmp/remote_tag.txt', 'w') as f:
+              f.write(remote_tag)
+          "
+
+      # --- DEPLOY TO RENDER VIA ADAPTER --------------------------------------
+      - name: Deploy to staging
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
+        run: |
+          python -c "
+          from src import config
+          from cloudlayer.factory import get_adapter
+          cfg = config.load(strict=False)
+          adapter = get_adapter(cfg)
+          ep = adapter.deploy(cfg.model_registry_name, 'itcs355-project')
+          print('Deployed to Endpoint:', ep)
+          "
+
+      # --- SMOKE TEST LIVE SERVICE -------------------------------------------
+      - name: Smoke test
+        env:
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
+        run: |
+          python -c "
+          from src import config
+          from cloudlayer.factory import get_adapter
+          cfg = config.load(strict=False)
+          adapter = get_adapter(cfg)
+          target_endpoint = '${{ secrets.RENDER_SERVICE_URL }}' or 'https://itcs355-project.onrender.com'
+          payloads = [
+              {'fixed acidity': 7.4, 'volatile acidity': 0.70, 'citric acid': 0.00, 'residual sugar': 1.9, 'chlorides': 0.076, 'free sulfur dioxide': 11.0, 'total sulfur dioxide': 34.0, 'density': 0.9978, 'pH': 3.51, 'sulphates': 0.56, 'alcohol': 9.4},
+              {'fixed acidity': 11.2, 'volatile acidity': 0.28, 'citric acid': 0.56, 'residual sugar': 1.9, 'chlorides': 0.075, 'free sulfur dioxide': 17.0, 'total sulfur dioxide': 60.0, 'density': 0.9980, 'pH': 3.16, 'sulphates': 0.58, 'alcohol': 9.8},
+              {'fixed acidity': 6.2, 'volatile acidity': 0.45, 'citric acid': 0.20, 'residual sugar': 1.6, 'chlorides': 0.060, 'free sulfur dioxide': 10.0, 'total sulfur dioxide': 28.0, 'density': 0.9940, 'pH': 3.40, 'sulphates': 0.65, 'alcohol': 11.5}
+          ]
+          for p in payloads:
+              print('Smoke Test Response:', adapter.invoke(target_endpoint, p))
+          "
