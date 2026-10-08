@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 
 from cloudlayer.base import CloudAdapter
 from huggingface_hub import (
-    HfApi,
     create_repo,
     hf_hub_download,
     upload_file,
