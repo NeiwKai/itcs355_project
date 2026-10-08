@@ -29,7 +29,7 @@ STATE: dict[str, Any] = {"model": None, "version": os.environ.get("MODEL_VERSION
 def _load_model():
     """Load model once at startup. Downloads from Hugging Face Hub if configured."""
     registry_name = os.environ.get("MODEL_REGISTRY_NAME")  # e.g., 'NeiwKai/wine-quality-model'
-    local_path = Path(os.environ.get("MODEL_PATH", "model.joblib"))
+    local_path = Path(os.environ.get("MODEL_PATH", "reports/model.joblib"))
 
     # 1. Direct local file loading
     if local_path.exists():
@@ -43,7 +43,7 @@ def _load_model():
 
         cfg = config.load(strict=False)
         adapter = get_adapter(cfg)
-        local_path = adapter.download(registry_name, "model.joblib")
+        local_path = adapter.download(registry_name, "reports/model.joblib")
     except Exception as err:
         log.error("Failed to load model via cloudlayer adapter: %s", err)
         raise RuntimeError(f"Model initialization failed: {err}") from err

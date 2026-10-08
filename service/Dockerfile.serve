@@ -10,7 +10,9 @@ FROM python@sha256:a2bc8c35469b6fe37735f7c4dae39049470b2ce068e73f799c02452de31d2
 RUN useradd --create-home --uid 10001 runner
 ENV PYTHONUNBUFFERED=1 PYTHONPATH=/app
 COPY --from=builder /install /usr/local
+# Create reports directory and set ownership to runner before switching USER
 WORKDIR /app
+RUN mkdir -p /app/reports && chown -R runner:runner /app
 COPY --chown=runner:runner service/ ./service/
 COPY --chown=runner:runner src/ ./src/
 COPY --chown=runner:runner cloudlayer/ ./cloudlayer/
