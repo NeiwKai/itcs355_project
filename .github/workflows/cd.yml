@@ -32,6 +32,19 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      # --- GENERATE CLOUD CONFIG ---------------------------------------------
+      - name: Generate .env for deployment
+        run: |
+          cat << 'EOF' > .env
+          CLOUD_PROVIDER=hf
+          TOKEN=${{ secrets.HF_TOKEN }}
+          DEPLOY_HOOK=${{ secrets.DEPLOY_HOOK }}
+          NAMESPACE=NeiwKai
+          PROJECT_ID=itcs355-proj-6688101-6688132
+          MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }}
+          MODEL_REGISTRY_NAME=${{ secrets.MODEL_REGISTRY_NAME }}
+          EOF
+
       # --- EXPORT / REGISTER MODEL ARTIFACT ----------------------------------
       - name: Prepare model artifact for deployment
         env:
