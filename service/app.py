@@ -29,8 +29,7 @@ STATE: dict[str, Any] = {"model": None, "version": os.environ.get("MODEL_VERSION
 def _load_model():
     """Load model once at startup. Downloads from Hugging Face Hub if configured."""
     registry_name = os.environ.get("MODEL_REGISTRY_NAME")  # e.g., 'NeiwKai/wine-quality-model'
-    token = os.environ.get("TOKEN")                    # Optional for private repos
-    model_path = Path(os.environ.get("MODEL_PATH", "reports/model.joblib"))
+    local_path = Path(os.environ.get("MODEL_PATH", "reports/model.joblib"))
 
     # 1. Direct local file loading
     if local_path.exists():
