@@ -13,6 +13,9 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from pathlib import Path
+import joblib
+
 from service.schemas import BatchRequest, BatchResponse, PredictRequest, PredictResponse
 
 logging.basicConfig(
@@ -23,32 +26,31 @@ log = logging.getLogger("service")
 
 STATE: dict[str, Any] = {"model": None, "version": os.environ.get("MODEL_VERSION", "unknown")}
 
-
 def _load_model():
-    """Load once, at startup. Never per request.
+    """Load model once at startup. Downloads from Hugging Face Hub if configured."""
+    registry_name = os.environ.get("MODEL_REGISTRY_NAME")  # e.g., 'NeiwKai/wine-quality-model'
+    token = os.environ.get("TOKEN")                    # Optional for private repos
+    model_path = Path(os.environ.get("MODEL_PATH", "reports/model.joblib"))
 
-    Loading per request is the commonest cause of a p99 that looks nothing like p50, and
-    it is the first thing to check when your latency distribution has a long tail.
-    """
-    name = os.environ.get("MODEL_REGISTRY_NAME")
-    version = os.environ.get("MODEL_VERSION")
-    if name and version:
-        import mlflow.sklearn  # imported lazily so tests can run without a registry
+    # 1. Direct local file loading
+    if local_path.exists():
+        log.info("Loading local model file from '%s'...", local_path)
+        return joblib.load(local_path)
 
-        mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
-        return mlflow.sklearn.load_model(f"models:/{name}/{version}")
+    # 2. Download directly inside container startup if model name is specified
+    try:
+        from src import config
+        from cloudlayer.factory import get_adapter
 
-    # Fallback for local development and tests only.
-    from pathlib import Path
+        cfg = config.load()
+        adapter = get_adapter(cfg)
+        local_path = adapter.download(registry_name, "/reports/model.joblib")
+    except Exception as err:
+        log.error("Failed to load model via cloudlayer adapter: %s", err)
+        raise RuntimeError(f"Model initialization failed: {err}") from err
 
-    import joblib
-
-    path = Path(os.environ.get("MODEL_PATH", "reports/model.joblib"))
-    if not path.exists():
-        raise RuntimeError(
-            "No model available. Set MODEL_REGISTRY_NAME and MODEL_VERSION, or MODEL_PATH."
-        )
-    return joblib.load(path)
+    log.info("Unpickling model from '%s'...", local_path)
+    return joblib.load(local_path)
 
 
 @asynccontextmanager

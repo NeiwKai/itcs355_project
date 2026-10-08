@@ -66,6 +66,42 @@ serve-image-local: serve-image ## Host the serving image locally (test)
 	  -e MLFLOW_TRACKING_URI=sqlite:///app/reports/mlflow.db \
 	  $(IMAGE)-serve:$(TAG)
 
+serve-image-push: serve-image ## Push image/context via cloud adapter 
+	@echo "Pushing image/context via cloud adapter..."
+	python -c "\
+from src import config; \
+from cloudlayer.factory import get_adapter; \
+cfg = config.load(strict=False); \
+adapter = get_adapter(cfg); \
+uri = adapter.push_image('$(IMAGE)-serve:$(TAG)'); \
+print(f'✓ Image/Context successfully pushed to: {uri}')"
+
+inject-drift: ## Shift a feature's distribution on purpose
+	python scripts/inject_drift.py --feature "volatile acidity" --mode shift --magnitude 0.3
+
+drift: ## Score drift against the reference window
+	python -m monitoring.drift --current data/current.csv
+
+register: export_model ## Register the model to bucket
+	python -c "\
+	from src import config; \
+	from cloudlayer.factory import get_adapter; \
+	cfg = config.load(strict=False); \
+	adapter = get_adapter(cfg); \
+	model_uri = adapter.register_model(model_path='$(MODEL_PATH)',model_name=cfg.model_registry_name); \
+	print(f'✓ Model successfully registered at: {model_uri}')"
+
+
+deploy: ## Deploy model inference service to Render
+	@echo "Deploying inference service to Render..."
+	python -c "\
+	from src import config; \
+	from cloudlayer.factory import get_adapter; \
+	cfg = config.load(strict=False); \
+	adapter = get_adapter(cfg); \
+	url = adapter.deploy(model_ref=cfg.model_registry_name, endpoint='itcs355-proj-service'); \
+	print(f'✓ Deployed live at: {url}')"
+
 
 
 

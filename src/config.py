@@ -9,6 +9,10 @@ ENV_FILE = REPO_ROOT / ".env"
 
 # The eight capability slots every lab depends on. scripts/cloud_check.py resolves each.
 CAPABILITY_SLOTS = (
+    "CLOUD_PROVIDER",
+    "TOKEN",
+    "DEPLOY_HOOK"
+    "NAMESPACE",
     "PROJECT_ID",
     "MLFLOW_TRACKING_URI",
     "MODEL_REGISTRY_NAME",
@@ -31,6 +35,10 @@ _load_env_file()
 
 @dataclass(frozen=True)
 class Config:
+    provider: str
+    token: str
+    deploy_hook: str
+    namespace: str
     mlflow_tracking_uri: str
     model_registry_name: str
     data_dir: Path = field(default=REPO_ROOT / "data")
@@ -50,6 +58,10 @@ def load(strict: bool = True) -> Config:
         )
     get = os.environ.get
     return Config(
+        provider=get("CLOUD_PROVIDER", "local"),
+        token=get("TOKEN", ""),
+        deploy_hook=get("DEPLOY_HOOK", ""),
+        namespace=get("NAME_SPACE", "NeiwKai/itcs355-project"),
         mlflow_tracking_uri=get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"),
         model_registry_name=get("MODEL_REGISTRY_NAME", "itcs355-proj"),
     )
