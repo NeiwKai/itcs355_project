@@ -171,7 +171,8 @@ class HuggingFaceAdapter(CloudAdapter):
         target_url = f"{base_url}{path}"
 
         headers = {"Content-Type": "application/json"}
-        if getattr(self, "token", None):
+        token = os.environ.get("API_SECRET_KEY")
+        if token:
             headers["Authorization"] = f"Bearer {self.token}"
 
         # 2. Send HTTP POST inference request
