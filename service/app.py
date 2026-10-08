@@ -125,7 +125,17 @@ def _score(rows: list[dict]) -> tuple[list[int], list[float]]:
     return discrete_scores, raw_scores
 
 
-@app.post("/predict", response_model=PredictResponse)
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "default-local-key")
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+    if credentials.credentials != API_SECRET_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing access token")
+    return credentials.credentials
+
+@app.post("/predict", response_model=PredictResponse, dependencies=[Depends(verify_token)])
 def predict(payload: PredictRequest) -> PredictResponse:
     discrete_scores, raw_scores = _score([payload.model_dump(by_alias=True)])
     return PredictResponse(
@@ -135,7 +145,7 @@ def predict(payload: PredictRequest) -> PredictResponse:
     )
 
 
-@app.post("/predict/batch", response_model=BatchResponse)
+@app.post("/predict/batch", response_model=BatchResponse, dependencies=[Depends(verify_token)])
 def predict_batch(payload: BatchRequest) -> BatchResponse:
     rows = [row.model_dump(by_alias=True) for row in payload.rows]
     discrete_scores, raw_scores = _score(rows)
