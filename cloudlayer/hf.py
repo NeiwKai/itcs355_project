@@ -68,7 +68,7 @@ class HuggingFaceAdapter(CloudAdapter):
         token = self.cfg.token or os.environ.get("TOKEN")
 
         # Download from Hugging Face Hub using the adapter's token
-        downloaded_file = hf_hub_download(
+        cached_model_path = hf_hub_download(
             repo_id=repo_id,
             filename=filename,
             repo_type=repo_type,
