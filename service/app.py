@@ -126,7 +126,7 @@ def _score(rows: list[dict]) -> tuple[list[int], list[float]]:
     return discrete_scores, raw_scores
 
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "default-local-key")
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)):
