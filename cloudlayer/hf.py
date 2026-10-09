@@ -187,9 +187,52 @@ class HuggingFaceAdapter(CloudAdapter):
         return response.json()
 
 
+    def emit_metric(
+        self,
+        name: str,
+        value: float,
+        labels: dict[str, str] | None = None,
+    ) -> None:
+        import json
+        import time
 
-    def emit_metric(self, metric_name: str, value: float) -> None:
-        """Emits tracking metrics to Hugging Face Space runtime logs/telemetry."""
-        print(f"[HF Telemetry] {metric_name}: {value}")
+        print(f"[HF Telemetry] {name}: {value:.5f}", flush=True)
 
+        token = self.cfg.token or os.environ.get("TOKEN")
+        if not token:
+            return
 
+        try:
+            namespace = getattr(self, "namespace", None) or os.environ.get("HF_NAMESPACE", "NeiwKai")
+            repo_id = f"{namespace}/itcs355-metrics"
+
+            create_repo(
+                repo_id=repo_id, 
+                repo_type="dataset", 
+                private=True,
+                exist_ok=True,
+                token=token
+            )
+
+            # File path on Hugging Face
+            repo_file = "telemetry.jsonl"
+            payload = {"timestamp": time.time(), "metric": name, "value": float(value), "labels": labels or {}}
+
+            # Download existing file if it exists, append new row, and upload back
+            try:
+                existing_file = hf_hub_download(repo_id=repo_id, filename=repo_file, repo_type="dataset", token=token)
+                existing_content = Path(existing_file).read_text(encoding="utf-8")
+            except Exception:
+                existing_content = ""
+
+            updated_content = existing_content + json.dumps(payload) + "\n"
+
+            upload_file(
+                path_or_fileobj=updated_content.encode("utf-8"),
+                path_in_repo=repo_file,
+                repo_id=repo_id,
+                repo_type="dataset",
+                token=token,
+            )
+        except Exception as e:
+            print(f"Warning: Could not sync metric to Hugging Face: {e}")
