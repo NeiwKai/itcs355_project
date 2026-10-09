@@ -3,16 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-# Ensure project root is in sys.path
-root_dir = Path(__file__).resolve().parents[1]
-if str(root_dir) not in sys.path:
-    sys.path.insert(0, str(root_dir))
-
 import numpy as np
-import pandas as pd
 
 from src import data
 
@@ -36,7 +29,6 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=7)
     args = ap.parse_args()
 
-    rng = np.random.default_rng(args.seed)
 
     if not args.source.exists():
         print(f"Error: Source file '{args.source}' does not exist. Run 'make data' first.")
