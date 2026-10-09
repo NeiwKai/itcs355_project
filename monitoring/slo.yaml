@@ -1,0 +1,41 @@
+service: itcs355-6688101-6688132-predict
+
+objectives:
+  - name: availability
+    target: 0.990               # 99.0% availability over 30 days
+    window: 30d
+    measurement: "successful responses (HTTP 200) / total responses, excluding 4xx client errors"
+    on_budget_exhausted: |
+      1. Immediately freeze non-critical code deployments to the service.
+      2. Trigger an automated health check probe to verify if the Render free tier container 
+         is unresponsive or undergoing cold-start spin-down loop.
+      3. Automatically route incoming inference requests to a lightweight fallback endpoint 
+         or return a cached baseline prediction response with an HTTP 200 degraded status.
+      4. Alert the team via GitHub issue / notification channel to investigate server infrastructure 
+         or worker process panics before resuming the deployment pipeline.
+
+  - name: latency
+    target_p95_ms: 300          # Matches the p95 threshold configured in loadtest/k6.js (p95 < 300ms)
+    window: 7d
+    measurement: "p95 of /predict, measured at the endpoint (http_req_duration), excluding cold-starts"
+    on_budget_exhausted: |
+      1. Trigger automated scale-up or ping a keep-alive background worker on Render to prevent 
+         container idle spin-downs (mitigating ~72s cold-start delays).
+      2. If latency remains degraded due to CPU saturation (as observed when VUs >= 10), enforce 
+         request rate-limiting (HTTP 429) on unthrottled single-prediction callers.
+      3. Instruct high-throughput API clients to migrate single /predict traffic to the vectorized 
+         /predict/batch endpoint (which achieves ~7.9ms per-row effective processing).
+      4. Initiate a performance rollback to the previous model artifact if model serialization 
+         overhead contributed to the latency breach.
+
+  - name: freshness
+    target_max_model_age_days: 30
+    window: continuous
+    measurement: "days since the production model version was trained and registered"
+    on_budget_exhausted: |
+      1. Trigger the automated MLOps retraining pipeline (Lab 5 workflow) using the latest 
+         reference dataset batch.
+      2. Evaluate retraining against current feature drift metrics (e.g., PSI threshold breaches 
+         on key features like volatile acidity) before promoting the retrained artifact.
+      3. If automated retraining or registration fails, raise a deployment blocker issue to manually 
+         inspect upstream pipeline integrity before forcing model registration.
