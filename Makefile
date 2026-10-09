@@ -11,7 +11,7 @@ MODEL_PATH := reports/model.joblib
 				serve serve-image serve-image-local \
 				serve-image-push inject-drift drift \
 				register deploy smoke \
-				loadtest
+				loadtest loadtest-batch loadtest-payload loadtest-coldstart
  
 
 help:
@@ -142,3 +142,30 @@ loadtest-payload: ## Sweep payload sizes (0B, 1KB, 10KB, 100KB) to measure seria
 		echo "=== Payload Padding: $$pad bytes ===" ; \
 		k6 run -e TARGET="$${ENDPOINT}" -e TOKEN="$${TOKEN}" -e PAD_BYTES=$$pad loadtest/k6-payload.js || true ; \
 	done
+
+loadtest-coldstart: ## Measure cold-start latency vs warm steady-state latency on Render
+	@ENDPOINT="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com/predict)"; \
+	TOKEN="$(or $(API_SECRET_KEY))"; \
+	PAYLOAD='{"fixed acidity": 7.4, "volatile acidity": 0.70, "citric acid": 0.00, "residual sugar": 1.9, "chlorides": 0.076, "free sulfur dioxide": 11.0, "total sulfur dioxide": 34.0, "density": 0.9978, "pH": 3.51, "sulphates": 0.56, "alcohol": 9.4}'; \
+	echo "=== 1. First Request (Cold Start Overhead) ===" ; \
+	if [ -n "$$TOKEN" ]; then \
+		curl -o /dev/null -s -w "Cold Start Latency: %{time_total}s\n" -X POST "$$ENDPOINT" \
+			-H "Content-Type: application/json" \
+			-H "Authorization: Bearer $$TOKEN" \
+			-d "$$PAYLOAD" ; \
+	else \
+		curl -o /dev/null -s -w "Cold Start Latency: %{time_total}s\n" -X POST "$$ENDPOINT" \
+			-H "Content-Type: application/json" \
+			-d "$$PAYLOAD" ; \
+	fi ; \
+	echo "=== 2. Second Request (Warm / Steady State) ===" ; \
+	if [ -n "$$TOKEN" ]; then \
+		curl -o /dev/null -s -w "Warm Request Latency: %{time_total}s\n" -X POST "$$ENDPOINT" \
+			-H "Content-Type: application/json" \
+			-H "Authorization: Bearer $$TOKEN" \
+			-d "$$PAYLOAD" ; \
+	else \
+		curl -o /dev/null -s -w "Warm Request Latency: %{time_total}s\n" -X POST "$$ENDPOINT" \
+			-H "Content-Type: application/json" \
+			-d "$$PAYLOAD" ; \
+	fi
