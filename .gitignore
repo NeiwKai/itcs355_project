@@ -1,5 +1,6 @@
 *.env
 
+data/*.csv
 data/raw/
 data/_local_blob/
 .dvc/cache/
