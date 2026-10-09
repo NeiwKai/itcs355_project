@@ -112,6 +112,7 @@ smoke: ## Smoke test deployed endpoint with a sample payload
 	python -c "from src import config; from cloudlayer.factory import get_adapter; cfg = config.load(strict=False); adapter = get_adapter(cfg); payload = {'fixed acidity': 7.4, 'volatile acidity': 0.70, 'citric acid': 0.00, 'residual sugar': 1.9, 'chlorides': 0.076, 'free sulfur dioxide': 11.0, 'total sulfur dioxide': 34.0, 'density': 0.9978, 'pH': 3.51, 'sulphates': 0.56, 'alcohol': 9.4}; preds = adapter.invoke('$${ENDPOINT}', payload); print('✓ Smoke Test Response:', preds)"
 
 
+## --------- Load Test for p50/p90/p99 ---------
 loadtest: ## Load test deployed endpoint at three concurrency levels (1, 10, 50 VUs)
 	@ENDPOINT="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com/predict)"; \
 	TOKEN="$(or $(API_SECRET_KEY))"; \
@@ -121,3 +122,13 @@ loadtest: ## Load test deployed endpoint at three concurrency levels (1, 10, 50 
 		echo "=== $$vus VUs ===" ; \
 		k6 run -e TARGET="$${ENDPOINT}" -e TOKEN="$${TOKEN}" -e VUS=$$vus loadtest/k6.js || true ; \
 	done
+
+loadtest-batch: ## Compare single vs. batch prediction latency (100 rows per loop)
+	@BASE="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com)"; \
+	TOKEN="$(or $(API_SECRET_KEY))"; \
+	echo "Waking up endpoint at $${BASE}..."; \
+	python -c "import requests, time; [time.sleep(5) for _ in range(12) if requests.get('$${BASE}/ready', timeout=10).status_code != 200]"; \
+	echo "=== Running Batch Mode (100 rows per payload) ===" ; \
+	k6 run -e BASE="$${BASE}" -e TOKEN="$${TOKEN}" -e MODE=batch loadtest/k6-batch.js || true ; \
+	echo "=== Running Single Mode (100 sequential requests) ===" ; \
+	k6 run -e BASE="$${BASE}" -e TOKEN="$${TOKEN}" -e MODE=single loadtest/k6-batch.js || true
