@@ -6,7 +6,12 @@ SEED := 20260518
 DATA_PATH := data/raw/winequality-red.csv
 MODEL_PATH := reports/model.joblib
 
-.PHONY: help setup test
+.PHONY: help setup data test train \
+				image reproduce export_model \
+				serve serve-image serve-image-local \
+				serve-image-push inject-drift drift \
+				register deploy smoke \
+				loadtest
  
 
 help:
@@ -80,7 +85,7 @@ inject-drift: ## Shift a feature's distribution on purpose
 	python scripts/inject_drift.py --feature "volatile acidity" --mode shift --magnitude 0.3
 
 drift: ## Score drift against the reference window
-	python -m monitoring.drift --current data/current.csv
+	python -m monitoring.drift --current data/current.csv --emit
 
 register: export_model ## Register the model to bucket
 	python -c "\
@@ -107,5 +112,12 @@ smoke: ## Smoke test deployed endpoint with a sample payload
 	python -c "from src import config; from cloudlayer.factory import get_adapter; cfg = config.load(strict=False); adapter = get_adapter(cfg); payload = {'fixed acidity': 7.4, 'volatile acidity': 0.70, 'citric acid': 0.00, 'residual sugar': 1.9, 'chlorides': 0.076, 'free sulfur dioxide': 11.0, 'total sulfur dioxide': 34.0, 'density': 0.9978, 'pH': 3.51, 'sulphates': 0.56, 'alcohol': 9.4}; preds = adapter.invoke('$${ENDPOINT}', payload); print('✓ Smoke Test Response:', preds)"
 
 
-
-
+loadtest: ## Load test deployed endpoint at three concurrency levels (1, 10, 50 VUs)
+	@ENDPOINT="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com/predict)"; \
+	TOKEN="$(or $(API_SECRET_KEY))"; \
+	echo "Waking up endpoint at $${ENDPOINT}..."; \
+	python -c "import requests, time; [time.sleep(5) for _ in range(12) if requests.get('$${ENDPOINT}'.replace('/predict', '/ready'), timeout=10).status_code != 200]"; \
+	for vus in 1 10 50; do \
+		echo "=== $$vus VUs ===" ; \
+		k6 run -e TARGET="$${ENDPOINT}" -e TOKEN="$${TOKEN}" -e VUS=$$vus loadtest/k6.js || true ; \
+	done
