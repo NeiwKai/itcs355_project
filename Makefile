@@ -132,3 +132,13 @@ loadtest-batch: ## Compare single vs. batch prediction latency (100 rows per loo
 	k6 run -e BASE="$${BASE}" -e TOKEN="$${TOKEN}" -e MODE=batch loadtest/k6-batch.js || true ; \
 	echo "=== Running Single Mode (100 sequential requests) ===" ; \
 	k6 run -e BASE="$${BASE}" -e TOKEN="$${TOKEN}" -e MODE=single loadtest/k6-batch.js || true
+
+loadtest-payload: ## Sweep payload sizes (0B, 1KB, 10KB, 100KB) to measure serialization latency
+	@ENDPOINT="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com/predict)"; \
+	TOKEN="$(or $(API_SECRET_KEY))"; \
+	echo "Waking up endpoint at $${ENDPOINT}..."; \
+	python -c "import requests, time; [time.sleep(5) for _ in range(12) if requests.get('$${ENDPOINT}'.replace('/predict', '/ready'), timeout=10).status_code != 200]"; \
+	for pad in 0 1000 10000 100000; do \
+		echo "=== Payload Padding: $$pad bytes ===" ; \
+		k6 run -e TARGET="$${ENDPOINT}" -e TOKEN="$${TOKEN}" -e PAD_BYTES=$$pad loadtest/k6-payload.js || true ; \
+	done
