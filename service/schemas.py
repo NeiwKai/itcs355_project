@@ -7,7 +7,7 @@ The bounds mirror src/data.PLAUSIBLE_RANGES. Keep them in step.
 """
 
 from __future__ import annotations
-
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -23,6 +23,9 @@ class PredictRequest(BaseModel):
     pH: float = Field(..., ge=2.70, le=4.05, alias="pH")
     sulphates: float = Field(..., ge=0.30, le=2.00, alias="sulphates")
     alcohol: float = Field(..., ge=8.00, le=15.00, alias="alcohol")
+
+    # Use 'pad' as the Python attribute and alias='_pad' for JSON payload parsing
+    pad: Optional[str] = Field(default=None, alias="_pad")
 
     model_config = {
         "extra": "forbid",
