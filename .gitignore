@@ -17,6 +17,9 @@ __pycache__/
 .pytest_cache/
 .venv/
 
+# ignore the env for dashboard.html
+monitoring/env.js
+
 # Excel lock files — created while the specification workbook is open.
 ~$*
 
