@@ -2,7 +2,7 @@ name: Monitor Drift & Send Alerts
 
 on:
   schedule:
-    - cron: '* * * * *'  # Periodic check
+    - cron: '1 * * * *'  # Periodic check
   workflow_dispatch:        # Manual check
   workflow_run:
     workflows: ["CD"]      # Runs automatically after your CD workflow completes
