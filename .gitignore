@@ -12,6 +12,8 @@ mlflow.db
 
 reports/*.json
 reports/*.joblib
+reports/*.bak
+reports/*jsonl
 __pycache__/
 *.pyc
 .pytest_cache/
