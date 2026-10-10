@@ -14,7 +14,7 @@ import pandas as pd
 # Conventional PSI reading, and it IS only conventional — it comes from credit scoring,
 # where features are stable and volumes are large.
 PSI_NO_CHANGE = 0.10
-PSI_MODERATE = 0.25
+PSI_MODERATE = 0.20
 
 
 @dataclass
