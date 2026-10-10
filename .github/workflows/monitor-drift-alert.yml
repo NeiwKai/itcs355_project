@@ -2,16 +2,15 @@ name: Monitor Drift & Send Alerts
 
 on:
   schedule:
-    - cron: '* * * * *'    # Runs every minute
-  workflow_dispatch:      # Manual trigger
+    - cron: '0 */6 * * *'    # Reliable background check every 6 hours
+  workflow_dispatch:        # Manual on-demand button in GitHub UI
   workflow_run:
-    workflows: ["CD"]     # Runs automatically after CD workflow completes
+    workflows: ["CD"]       # Automatic health check after deployment
     types:
       - completed
 
 jobs:
   check-drift:
-    # Run if triggered by schedule, manual dispatch, OR if CD workflow succeeded
     if: |
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
@@ -20,7 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Fall back to default branch for schedule/workflow_dispatch triggers
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - uses: actions/setup-python@v5
