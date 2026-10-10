@@ -229,10 +229,26 @@
         });
 
         async function fetchLiveRenderService() {
+            const apiKeyInput = document.getElementById('apiSecretInput').value.trim();
+            
+            const headers = { 'Content-Type': 'application/json' };
+            if (apiKeyInput) {
+                headers['Authorization'] = `Bearer ${apiKeyInput}`;
+            }
+
+            const samplePayload = {
+                "fixed acidity": 7.4, "volatile acidity": 0.70, "citric acid": 0.00,
+                "residual sugar": 1.9, "chlorides": 0.076, "free sulfur dioxide": 11.0,
+                "total sulfur dioxide": 34.0, "density": 0.9978, "pH": 3.51,
+                "sulphates": 0.56, "alcohol": 9.4
+            };
+
             const startTime = performance.now();
             try {
-                const res = await fetch(RENDER_HEALTH_ENDPOINT, {
-                    method: 'GET'
+                const res = await fetch(RENDER_ENDPOINT, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(samplePayload)
                 });
 
                 const latencyMs = Math.round(performance.now() - startTime);
