@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
+import time
+import requests
 
 from cloudlayer.base import CloudAdapter
 from huggingface_hub import (
@@ -11,6 +13,26 @@ from huggingface_hub import (
     upload_file,
     upload_folder,
 )
+
+def warmup_render_service(base_url: str, max_retries: int = 5) -> bool:
+    """Pings Render health endpoint to handle free-tier cold boots."""
+    health_url = f"{base_url.rstrip('/')}/health"
+    print(f"Warming up Render service at {health_url}...")
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            res = requests.get(health_url, timeout=15)
+            if res.status_code == 200:
+                print("✓ Render instance is active and ready.")
+                return True
+        except requests.exceptions.RequestException:
+            pass
+
+        print(f"Waiting for cold start... attempt {attempt}/{max_retries}")
+        time.sleep(10)
+
+    print("⚠️ Render service did not respond within warmup period.")
+    return False
 
 
 class HuggingFaceAdapter(CloudAdapter):
@@ -167,6 +189,10 @@ class HuggingFaceAdapter(CloudAdapter):
             ).rstrip("/")
 
         # Determine target path based on payload structure (batch vs single)
+
+        # Pre-warm Render instance before firing actual model inference call
+        warmup_render_service(base_url)
+
         path = "/predict/batch" if "rows" in payload else "/predict"
         target_url = f"{base_url}{path}"
 
