@@ -12,7 +12,7 @@ MODEL_PATH := reports/model.joblib
 				serve-image-push inject-drift drift \
 				register deploy smoke \
 				loadtest loadtest-batch loadtest-payload loadtest-coldstart \
-				gen-env
+				gen-env alert-test
  
 
 help:
@@ -180,3 +180,14 @@ gen-env: ## Generate env.js for the dashboard from active environment variables
 	echo "  HF_PRIVATE_URL: 'https://huggingface.co/datasets/$${HF_NS}/itcs355-metrics/raw/main/telemetry.jsonl'" >> monitoring/env.js ; \
 	echo "};" >> monitoring/env.js ; \
 	echo "Generated monitoring/env.js successfully."
+
+.PHONY: alert-test
+
+alert-test: ## Test the telemetry alert monitor script locally with active environment variables
+	@echo "Running telemetry drift alert check..."
+	@HF_TOK="$(or $(HF_TOKEN),$(HF_TOK))" \
+	HF_NS="$(or $(HF_NAMESPACE),NeiwKai)" \
+	ALERT_SENDER_EMAIL="$(or $(ALERT_SENDER_EMAIL),)" \
+	ALERT_SENDER_PASSWORD="$(or $(ALERT_SENDER_PASSWORD),)" \
+	ALERT_RECIPIENT_EMAIL="$(or $(ALERT_RECIPIENT_EMAIL),)" \
+	python3 scripts/check_telemetry_alerts.py
