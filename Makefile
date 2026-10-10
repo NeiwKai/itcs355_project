@@ -11,7 +11,8 @@ MODEL_PATH := reports/model.joblib
 				serve serve-image serve-image-local \
 				serve-image-push inject-drift drift \
 				register deploy smoke \
-				loadtest loadtest-batch loadtest-payload loadtest-coldstart
+				loadtest loadtest-batch loadtest-payload loadtest-coldstart \
+				gen-env
  
 
 help:
@@ -107,10 +108,17 @@ deploy: ## Deploy model inference service to Render
 	url = adapter.deploy(model_ref=cfg.model_registry_name, endpoint='itcs355-proj-service'); \
 	print(f'✓ Deployed live at: {url}')"
 
-smoke: ## Smoke test deployed endpoint with a sample payload
+smoke: ## Smoke test deployed endpoint with a sample payload and optional authorization token
 	@ENDPOINT="$(or $(ENDPOINT_NAME),https://itcs355-project.onrender.com)"; \
-	python -c "from src import config; from cloudlayer.factory import get_adapter; cfg = config.load(strict=False); adapter = get_adapter(cfg); payload = {'fixed acidity': 7.4, 'volatile acidity': 0.70, 'citric acid': 0.00, 'residual sugar': 1.9, 'chlorides': 0.076, 'free sulfur dioxide': 11.0, 'total sulfur dioxide': 34.0, 'density': 0.9978, 'pH': 3.51, 'sulphates': 0.56, 'alcohol': 9.4}; preds = adapter.invoke('$${ENDPOINT}', payload); print('✓ Smoke Test Response:', preds)"
-
+	TOKEN="$(or $(API_SECRET_KEY),$(TOKEN))"; \
+	python -c "import os; from src import config; from cloudlayer.factory import get_adapter; \
+	cfg = config.load(strict=False); \
+	adapter = get_adapter(cfg); \
+	payload = {'fixed acidity': 7.4, 'volatile acidity': 0.70, 'citric acid': 0.00, 'residual sugar': 1.9, 'chlorides': 0.076, 'free sulfur dioxide': 11.0, 'total sulfur dioxide': 34.0, 'density': 0.9978, 'pH': 3.51, 'sulphates': 0.56, 'alcohol': 9.4}; \
+	token = '$${TOKEN}'; \
+	kwargs = {'token': token} if token else {}; \
+	preds = adapter.invoke('$${ENDPOINT}', payload, **kwargs); \
+	print('✓ Smoke Test Response:', preds)"
 
 ## --------- Load Test for p50/p90/p99 ---------
 loadtest: ## Load test deployed endpoint at three concurrency levels (1, 10, 50 VUs)
@@ -169,3 +177,14 @@ loadtest-coldstart: ## Measure cold-start latency vs warm steady-state latency o
 			-H "Content-Type: application/json" \
 			-d "$$PAYLOAD" ; \
 	fi
+
+gen-env: ## Generate env.js for the dashboard from active environment variables
+	@HF_NS="$(or $(HF_NAMESPACE),NeiwKai)" ; \
+	HF_TOK="$(or $(HF_TOKEN),)" ; \
+	API_KEY="$(or $(API_SECRET_KEY),)" ; \
+	echo "window.ENV = {" > monitoring/env.js ; \
+	echo "  HF_TOKEN: '$${HF_TOK}'," >> monitoring/env.js ; \
+	echo "  API_SECRET_KEY: '$${API_KEY}'," >> monitoring/env.js ; \
+	echo "  HF_PRIVATE_URL: 'https://huggingface.co/datasets/$${HF_NS}/itcs355-metrics/raw/main/telemetry.jsonl'" >> monitoring/env.js ; \
+	echo "};" >> monitoring/env.js ; \
+	echo "Generated monitoring/env.js successfully."
