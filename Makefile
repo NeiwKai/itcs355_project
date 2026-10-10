@@ -181,7 +181,6 @@ gen-env: ## Generate env.js for the dashboard from active environment variables
 	echo "};" >> monitoring/env.js ; \
 	echo "Generated monitoring/env.js successfully."
 
-.PHONY: alert-test
 
 alert-test: ## Test the telemetry alert monitor script locally with active environment variables
 	@echo "Running telemetry drift alert check..."
