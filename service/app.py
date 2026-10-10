@@ -13,6 +13,7 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Request, Depends, Security, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 
 from pathlib import Path
 import joblib
@@ -66,6 +67,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ITCS355 wine quality project", version="0.0.1", lifespan=lifespan)
+
+# Allow cross-origin preflight OPTIONS requests from your local dashboard
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins (or specify ["http://localhost:8000"])
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows OPTIONS, POST, GET, etc.
+    allow_headers=["*"],  # Allows Authorization, Content-Type, X-Model-Version
+    expose_headers=["X-Model-Version"],  # Ensures frontend JS can read X-Model-Version
+)
 
 
 @app.middleware("http")
