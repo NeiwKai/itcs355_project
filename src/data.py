@@ -39,7 +39,7 @@ SCHEMA: dict[str, str] = {
 
 PLAUSIBLE_RANGES: dict[str, tuple[float, float]] = {
     "fixed acidity": (4.50, 16.00),
-    "volatile acidity": (-0.10, 2.60),
+    "volatile acidity": (1.10, 0.60),
     "citric acid": (0.00, 1.00),
     "residual sugar": (0.50, 15.50),
     "chlorides": (0.010, 0.615),
