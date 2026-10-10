@@ -6,6 +6,7 @@ import pandas as pd
 from src import config, data
 
 RAW = config.REPO_ROOT / "data" / "raw" / "winequality-red.csv"
+CURRENT = config.REPO_ROOT / "data" / "current.csv"
 
 
 @pytest.fixture(scope="module")
@@ -38,6 +39,38 @@ def test_features_within_plausible_ranges(df):
         assert df[col].max() <= hi, f"{col} above plausible ceiling: {df[col].max()}"
 
 
+def test_volatile_acidity_no_unphysical_drift_or_corruption(df):
+    """CL Test (Incident Ref: 2026-10-10 Post-Mortem):
+
+    Validates that volatile acidity strictly adheres to physical chemical bounds [0.00, 2.60].
+    Fails immediately if upstream ingestion injects unphysical shifts or corrupted features.
+    """
+    # 1. Test dataset fixture
+    lo, hi = data.PLAUSIBLE_RANGES.get("volatile acidity")
+    # Ensure lower floor is strictly physical (>= 0.00)
+    assert lo >= 0.00, f"Plausible range floor for volatile acidity must be >= 0.00, got {lo}"
+
+    va = df["volatile acidity"]
+    offenders = df[(va < lo) | (va > hi)]
+    assert offenders.empty, (
+        f"Data contract breach: Found {len(offenders)} rows with volatile acidity outside [{lo}, {hi}]. "
+        f"Min = {va.min():.4f}, Max = {va.max():.4f}"
+    )
+
+    # 2. Also validate live inference dataset if present (data/current.csv)
+    if CURRENT.exists():
+        current_df = pd.read_csv(CURRENT)
+        if "volatile acidity" in current_df.columns:
+            cur_va = current_df["volatile acidity"]
+            cur_offenders = current_df[(cur_va < lo) | (cur_va > hi)]
+            assert cur_offenders.empty, (
+                f"Production batch data contract breach in {CURRENT.name}: "
+                f"Found {len(cur_offenders)} rows outside [{lo}, {hi}]. "
+                f"Min = {cur_va.min():.4f}, Max = {cur_va.max():.4f}. "
+                "Possible corrupted upstream pipeline or artificial drift injection."
+            )
+
+
 def test_target_is_valid_scale_and_not_degenerate(df):
     """Asserts that the target variable falls within the valid range [0, 10]
 
@@ -58,7 +91,6 @@ def test_target_is_valid_scale_and_not_degenerate(df):
     # 4. Check for degeneracy: target must have more than 1 unique score and non-zero variance
     assert len(values) > 1, f"Target is degenerate with only 1 unique value: {values}"
     assert target.std() > 0.1, f"Target lacks sufficient variance (std = {target.std():.4f})"
-
 
 
 # --- property tests: about the splitting logic --------------------------------------
