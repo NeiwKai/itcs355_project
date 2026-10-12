@@ -11,18 +11,54 @@ An end-to-end Machine Learning Operations (MLOps) pipeline for serving, monitori
 
 ## 🏗 System Architecture
 
-```
-[ Git / PR ] ──> [ GitHub Actions CI ] ──> [ Render CD Deployment ]
-                         │                        │
-                         ▼                        ▼
-                [ Data Contract Tests ]  [ FastAPI Model Endpoint ]
-                                                  │
-                                                  ▼
-                                         [ Ingestion / Drift ]
-                                                  │
-                                                  ▼
-[ Alert Check Watchdog ] <── [ Hugging Face Telemetry Stream ]
+```mermaid
+flowchart TD
+    subgraph Developer_and_CI ["👨‍💻 Developer & CI/CD Pipeline"]
+        DEV["Developer / Git Client"]
+        PR["Pull Request / Commit"]
+        GHA_CI["GitHub Actions: CI Workflows<br/>(pytest, Contract Tests)"]
+        CL_TEST["CL Contract Check<br/>(test_data.py)"]
 
+        DEV -->|git push| PR
+        PR -->|triggers| GHA_CI
+        GHA_CI -->|enforces| CL_TEST
+        CL_TEST -->|blocks| FAIL_BUILD["❌ Fail Build if Schema/Range Violated"]
+    end
+
+    subgraph CD_and_Deployment ["🚀 Deployment & Serving"]
+        CD_WORKFLOW["GitHub Actions: CD"]
+        RENDER["Render Service<br/>(FastAPI Endpoint: /predict)"]
+        WARMUP["Warmup Script / Smoke Test"]
+
+        GHA_CI -->|on success| CD_WORKFLOW
+        CD_WORKFLOW -->|deploys| RENDER
+        WARMUP -->|health check / pre-warm| RENDER
+    end
+
+    subgraph Ingestion_and_Monitoring ["📊 Ingestion, Telemetry & Watchdog"]
+        CURRENT_DATA["Live Batch Ingestion<br/>(data/current.csv)"]
+        DRIFT_CALC["Drift Engine<br/>(monitoring/drift.py - PSI & KS)"]
+        HF_TELEMETRY["Hugging Face Datasets<br/>(telemetry.jsonl)"]
+        WATCHDOG["GitHub Actions: Monitor Drift<br/>(check_telemetry_alerts.py)"]
+        GMAIL["Gmail SMTP Server"]
+        ALERT_MAIL["📩 Alert Email Received"]
+
+        RENDER -->|logs predictions| CURRENT_DATA
+        CURRENT_DATA -->|make drift| DRIFT_CALC
+        DRIFT_CALC -->|emits metrics| HF_TELEMETRY
+        WATCHDOG -->|polls metrics| HF_TELEMETRY
+        WATCHDOG -->|threshold breach > 0.20| GMAIL
+        GMAIL -->|dispatches| ALERT_MAIL
+        ALERT_MAIL -->|acknowledgment record| HF_TELEMETRY
+    end
+
+    classDef ciStyle fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef cdStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+    classDef monitorStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+
+    class DEV,PR,GHA_CI,CL_TEST,FAIL_BUILD ciStyle;
+    class CD_WORKFLOW,RENDER,WARMUP cdStyle;
+    class CURRENT_DATA,DRIFT_CALC,HF_TELEMETRY,WATCHDOG,GMAIL,ALERT_MAIL monitorStyle;
 ```
 
 ---
@@ -31,10 +67,11 @@ An end-to-end Machine Learning Operations (MLOps) pipeline for serving, monitori
 
 * **Machine Learning & Data:** Python 3.11, PyTorch / Scikit-Learn, Pandas, NumPy
 * **API & Deployment:** FastAPI, Uvicorn, Render (Free Tier Container Hosting)
-* **Telemetry & Storage:** Hugging Face Datasets (`NeiwKai/itcs355-metrics`, `NeiwKai/itcs355-proj-serve`), 
-    * Hugging Face Models (`NeiwKai/itcs355-proj-6688101-6688132-model`)
+* **Telemetry & Storage:**
+    * Hugging Face Datasets (`NeiwKai/itcs355-metrics`) for metrics logging.
+    * Hugging Face Datasets (`NeiwKai/itcs355-proj-serve`) for docker image registry.
+    * Hugging Face Models (`NeiwKai/itcs355-proj-6688101-6688132-model`) for model versioning.
 * **CI/CD & Monitoring:** GitHub Actions, Pytest, Gmail SMTP Alerting
-* **Automation:** GNU Makefile
 
 ---
 
@@ -64,7 +101,8 @@ make reproduce
 
 ### 2. Set Environment Variables
 
-Create a `xxx.env` file or export required keys in your terminal:
+Create a `xxx.env` file or export required keys in your terminal.
+This is required for `Makefile` execution.
 
 ```bash
 export HF_TOKEN="your_huggingface_write_token"
@@ -75,7 +113,7 @@ export ALERT_RECIPIENT_EMAIL="your_email@gmail.com"
 
 ```
 
-For config.py, it does require `.env` file which can be found as `example.env.example`.
+For `src/config.py`, it does require `.env` file which can be found as `example.env.example`.
 
 ---
 
